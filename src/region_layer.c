@@ -436,6 +436,124 @@ void get_region_detections(layer l, int w, int h, int netw, int neth, float thre
     correct_region_boxes(dets, l.w*l.h*l.n, w, h, netw, neth, relative);
 }
 
+void yolo2_correct_region_boxes(box *boxes, int n, int w, int h, int netw, int neth, int relative)
+{
+    int i;
+    int new_w=0;
+    int new_h=0;
+    if (((float)netw/w) < ((float)neth/h)) {
+        new_w = netw;
+        new_h = (h * netw)/w;
+    } else {
+        new_h = neth;
+        new_w = (w * neth)/h;
+    }
+    for (i = 0; i < n; ++i){
+        box b = boxes[i];
+        b.x =  (b.x - (netw - new_w)/2./netw) / ((float)new_w/netw); 
+        b.y =  (b.y - (neth - new_h)/2./neth) / ((float)new_h/neth); 
+        b.w *= (float)netw/new_w;
+        b.h *= (float)neth/new_h;
+        if(!relative){
+            b.x *= w;
+            b.w *= w;
+            b.y *= h;
+            b.h *= h;
+        }
+        boxes[i] = b;
+    }
+}
+
+void get_region_boxes(layer l, int w, int h, int netw, int neth, float thresh, float **probs, box *boxes, float **masks, int only_objectness, int *map, float tree_thresh, int relative)
+{
+    int i,j,n,z;
+    float *predictions = l.output;
+    if (l.batch == 2) {
+        float *flip = l.output + l.outputs;
+        for (j = 0; j < l.h; ++j) {
+            for (i = 0; i < l.w/2; ++i) {
+                for (n = 0; n < l.n; ++n) {
+                    for(z = 0; z < l.classes + l.coords + 1; ++z){
+                        int i1 = z*l.w*l.h*l.n + n*l.w*l.h + j*l.w + i;
+                        int i2 = z*l.w*l.h*l.n + n*l.w*l.h + j*l.w + (l.w - i - 1);
+                        float swap = flip[i1];
+                        flip[i1] = flip[i2];
+                        flip[i2] = swap;
+                        if(z == 0){
+                            flip[i1] = -flip[i1];
+                            flip[i2] = -flip[i2];
+                        }
+                    }
+                }
+            }
+        }
+        for(i = 0; i < l.outputs; ++i){
+            l.output[i] = (l.output[i] + flip[i])/2.;
+        }
+    }
+    for (i = 0; i < l.w*l.h; ++i){
+        int row = i / l.w;
+        int col = i % l.w;
+        for(n = 0; n < l.n; ++n){
+            int index = n*l.w*l.h + i;
+            for(j = 0; j < l.classes; ++j){
+                probs[index][j] = 0;
+            }
+            int obj_index  = entry_index(l, 0, n*l.w*l.h + i, l.coords);
+            int box_index  = entry_index(l, 0, n*l.w*l.h + i, 0);
+            int mask_index = entry_index(l, 0, n*l.w*l.h + i, 4);
+            float scale = l.background ? 1 : predictions[obj_index];
+            boxes[index] = get_region_box(predictions, l.biases, n, box_index, col, row, l.w, l.h, l.w*l.h);
+            if(masks){
+                for(j = 0; j < l.coords - 4; ++j){
+                    masks[index][j] = l.output[mask_index + j*l.w*l.h];
+                }
+            }
+
+            int class_index = entry_index(l, 0, n*l.w*l.h + i, l.coords + !l.background);
+            if(l.softmax_tree){
+
+                hierarchy_predictions(predictions + class_index, l.classes, l.softmax_tree, 0, l.w*l.h);
+                if(map){
+                    for(j = 0; j < 200; ++j){
+                        int class_index = entry_index(l, 0, n*l.w*l.h + i, l.coords + 1 + map[j]);
+                        float prob = scale*predictions[class_index];
+                        probs[index][j] = (prob > thresh) ? prob : 0;
+                    }
+                } else {
+                    int j =  hierarchy_top_prediction(predictions + class_index, l.softmax_tree, tree_thresh, l.w*l.h);
+                    probs[index][j] = (scale > thresh) ? scale : 0;
+                    probs[index][l.classes] = scale;
+                }
+            } else {
+                float max = 0;
+                for(j = 0; j < l.classes; ++j){
+                    int class_index = entry_index(l, 0, n*l.w*l.h + i, l.coords + 1 + j);
+                    float prob = scale*predictions[class_index];
+                    probs[index][j] = (prob > thresh) ? prob : 0;
+                    if(prob > max) max = prob;
+                    // TODO REMOVE
+                    // if (j == 56 ) probs[index][j] = 0; 
+                    /*
+                       if (j != 0) probs[index][j] = 0; 
+                       int blacklist[] = {121, 497, 482, 504, 122, 518,481, 418, 542, 491, 914, 478, 120, 510,500};
+                       int bb;
+                       for (bb = 0; bb < sizeof(blacklist)/sizeof(int); ++bb){
+                       if(index == blacklist[bb]) probs[index][j] = 0;
+                       }
+                     */
+                }
+                probs[index][l.classes] = max;
+            }
+            if(only_objectness){
+                probs[index][0] = scale;
+            }
+        }
+    }
+    yolo2_correct_region_boxes(boxes, l.w*l.h*l.n, w, h, netw, neth, relative);
+}
+
+
 #ifdef GPU
 
 void forward_region_layer_gpu(const layer l, network net)

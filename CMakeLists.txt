@@ -11,10 +11,10 @@ include_directories(include)
 include_directories(src)
 
 FILE(GLOB DARKNET_FILES src/*.c)
+FILE(GLOB EXAMPLES_FILES examples/*.c)
+
 #remove this file
 list(REMOVE_ITEM DARKNET_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/compare.c")
-
-FILE(GLOB EXAMPLES_FILES examples/*.c)
 list(REMOVE_ITEM EXAMPLES_FILES "${CMAKE_CURRENT_SOURCE_DIR}/examples/darknet.c")
 list(REMOVE_ITEM EXAMPLES_FILES "${CMAKE_CURRENT_SOURCE_DIR}/examples/rnn_vid.c")
 list(REMOVE_ITEM EXAMPLES_FILES "${CMAKE_CURRENT_SOURCE_DIR}/examples/swag.c")
