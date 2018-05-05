@@ -37,8 +37,6 @@ typedef struct{
     char **names;
 } metadata;
 
-metadata get_metadata(char *file);
-
 typedef struct{
     int *leaf;
     int n;
@@ -51,7 +49,6 @@ typedef struct{
     int *group_size;
     int *group_offset;
 } tree;
-tree *read_tree(char *filename);
 
 typedef enum{
     LOGISTIC, RELU, RELIE, LINEAR, RAMP, TANH, PLSE, LEAKY, ELU, LOGGY, STAIR, HARDTAN, LHTAN
@@ -420,8 +417,6 @@ struct layer{
 #endif
 };
 
-void free_layer(layer);
-
 typedef enum {
     CONSTANT, STEP, EXP, POLY, STEPS, SIG, RANDOM
 } learning_rate_policy;
@@ -582,12 +577,6 @@ typedef struct{
     float left, right, top, bottom;
 } box_label;
 
-
-network *load_network(char *cfg, char *weights, int clear);
-load_args get_base_args(network *net);
-
-void free_data(data d);
-
 typedef struct node{
     void *val;
     struct node *next;
@@ -599,6 +588,21 @@ typedef struct list{
     node *front;
     node *back;
 } list;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+metadata get_metadata(char *file);
+
+tree *read_tree(char *filename);
+
+void free_layer(layer);
+
+network *load_network(char *cfg, char *weights, int clear);
+load_args get_base_args(network *net);
+
+void free_data(data d);
 
 pthread_t load_data(load_args args);
 list *read_data_cfg(char *filename);
@@ -643,6 +647,7 @@ float train_networks(network **nets, int n, data d, int interval);
 void sync_nets(network **nets, int n, int interval);
 void harmless_update_network_gpu(network *net);
 #endif
+
 image get_label(image **characters, char *string, int size);
 void draw_label(image a, int r, int c, image label, const float *rgb);
 void save_image_png(image im, const char *name);
@@ -796,5 +801,8 @@ int *read_intlist(char *s, int *n, int d);
 size_t rand_size_t();
 float rand_normal();
 float rand_uniform(float min, float max);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
