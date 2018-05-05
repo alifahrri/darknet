@@ -335,7 +335,6 @@ void set_temp_network(network *net, float t)
     }
 }
 
-
 void set_batch_network(network *net, int b)
 {
     net->batch = b;

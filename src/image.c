@@ -229,7 +229,14 @@ image **load_alphabet()
         alphabets[j] = calloc(128, sizeof(image));
         for(i = 32; i < 127; ++i){
             char buff[256];
+#ifdef DARKNET_DIR
+            char dir[256] = DARKNET_DIR;
+            char file[256] = "data/labels/%d_%d.png";
+            strcat(dir, file);
+            sprintf(buff, dir, i, j);
+#else
             sprintf(buff, "data/labels/%d_%d.png", i, j);
+#endif
             alphabets[j][i] = load_image_color(buff, 0, 0);
         }
     }

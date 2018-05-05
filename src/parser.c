@@ -36,16 +36,10 @@
 #include "lstm_layer.h"
 #include "utils.h"
 
-typedef struct{
-    char *type;
-    list *options;
-}section;
-
 list *read_cfg(char *filename);
 
 LAYER_TYPE string_to_layer_type(char * type)
 {
-
     if (strcmp(type, "[shortcut]")==0) return SHORTCUT;
     if (strcmp(type, "[crop]")==0) return CROP;
     if (strcmp(type, "[cost]")==0) return COST;
@@ -87,17 +81,23 @@ LAYER_TYPE string_to_layer_type(char * type)
 void free_section(section *s)
 {
     free(s->type);
+    s->type = NULL;
     node *n = s->options->front;
     while(n){
         kvp *pair = (kvp *)n->val;
         free(pair->key);
+        pair->key = NULL;
         free(pair);
+        pair = NULL;
         node *next = n->next;
         free(n);
+        n = NULL;
         n = next;
     }
     free(s->options);
+    s->options = NULL;
     free(s);
+    s = NULL;
 }
 
 void parse_data(char *data, float *a, int n)
@@ -115,17 +115,6 @@ void parse_data(char *data, float *a, int n)
         curr = next+1;
     }
 }
-
-typedef struct size_params{
-    int batch;
-    int inputs;
-    int h;
-    int w;
-    int c;
-    int index;
-    int time_steps;
-    network *net;
-} size_params;
 
 local_layer parse_local(list *options, size_params params)
 {
@@ -758,7 +747,7 @@ network *parse_network_cfg(char *filename)
         params.index = count;
         fprintf(stderr, "%5d ", count);
         s = (section *)n->val;
-        options = s->options;
+        options = s->options; 
         layer l = {0};
         LAYER_TYPE lt = string_to_layer_type(s->type);
         if(lt == CONVOLUTIONAL){
@@ -1293,4 +1282,3 @@ void load_weights(network *net, char *filename)
 {
     load_weights_upto(net, filename, 0, net->n);
 }
-
