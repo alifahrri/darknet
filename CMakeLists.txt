@@ -55,6 +55,10 @@ else()
     add_library(${PROJECT_NAME}lib SHARED ${DARKNET_FILES})
 endif()
 
+include_directories(wrapper/include)
+add_library(${PROJECT_NAME}_cpp_wrapper wrapper/src/yolowrapper.cpp yolo2_box.c)
+target_link_libraries(${PROJECT_NAME}_cpp_wrapper ${PROJECT_NAME}lib)
+
 add_executable(${PROJECT_NAME} examples/darknet.c)
 add_library(example_lib ${EXAMPLES_FILES})
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}lib ${OpenCV_LIBS} example_lib)
