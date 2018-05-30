@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(darknet)
 
+add_compile_options(-std=c++11)
+
 find_package(Threads)
 find_package(CUDA)
 find_package(OpenCV REQUIRED)
@@ -56,8 +58,8 @@ else()
 endif()
 
 include_directories(wrapper/include)
-add_library(${PROJECT_NAME}_cpp_wrapper wrapper/src/yolowrapper.cpp yolo2_box.c)
-target_link_libraries(${PROJECT_NAME}_cpp_wrapper ${PROJECT_NAME}lib)
+add_library(${PROJECT_NAME}_cpp_wrapper wrapper/src/yolowrapper.cpp wrapper/src/yolo2_box.c)
+target_link_libraries(${PROJECT_NAME}_cpp_wrapper ${PROJECT_NAME}lib ${OpenCV_LIBS})
 
 add_executable(${PROJECT_NAME} examples/darknet.c)
 add_library(example_lib ${EXAMPLES_FILES})
