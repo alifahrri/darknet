@@ -55,6 +55,7 @@ extern "C"
 }
 */
 
+#include <string>
 #include <mutex>
 #include <opencv2/opencv.hpp>
 #include "opencv2/highgui/highgui_c.h"
@@ -82,6 +83,7 @@ public :
 	
 public :
 	Darknet();
+	Darknet(const std::string &cfg, const std::string &data, const std::string &weight, const std::string &label);
 	void detect(IplImage *ipl);
 	void detect(cv::Mat *mat);
 	void drawDetections(cv::Mat &mat, const BBoxes &bboxes);

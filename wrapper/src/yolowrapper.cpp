@@ -100,6 +100,88 @@ Darknet::Darknet()
 	this->predictions = (float**)calloc(demo_frame, sizeof(float*));
 	for (int i = 0; i < demo_frame; ++i){
         predictions[i] = (float*)calloc(demo_total, sizeof(float));
+          }
+}
+
+using std::cout;
+using std::endl;
+using std::vector;
+using std::flush;
+using std::string;
+
+Darknet::Darknet(const std::string &cfg, const std::string &data, const std::string &weight, const std::string &label)
+{
+  cout << "Darknet() :" << endl;
+  //  char* cfg_file = cfg.c_str();
+  //  char* weight_file = weight.c_str();
+  vector<char> cfg_file(cfg.c_str(), cfg.c_str()+cfg.size()+1);
+  vector<char> weight_file(weight.c_str(),weight.c_str()+weight.size()+1);
+
+  cout << "loading alphabet : " << flush;
+  auto alphabet = load_alphabet();
+  cout << "done!" << endl;
+
+  cout << "reading data config : " << endl;
+
+  vector<char> data_file(data.c_str(),data.c_str()+data.size()+1);
+  auto options = read_data_cfg(data_file.data());
+
+  cout << "> loading classes : " << flush;
+  int classes = option_find_int(options, "classes", DEFAULT_CLASS);
+  cout << "done!" << endl;
+  string label_str(option_find_str(options, "names", DEFAULT_NAME_LIST));
+  char filename[250] = {0};
+#ifdef DARKNET_DIR
+  if(access(label_str.c_str(), F_OK))
+    label_str = std::string(DARKNET_DIR) + "data/coco.names";
+#endif
+  std::strncpy(filename, label_str.data(), sizeof(char)*label_str.size());
+  cout << "> loading labels : " << flush;
+  vector<char> name_file(label.c_str(), label.c_str()+label.size()+1);
+  auto names = get_labels(name_file.data());
+  cout << "done!" << endl;
+  cout << "reading data config : done!" << endl;
+
+  // net = (network*)calloc(1, sizeof(network));
+  // this->net = new network;
+
+  this->demo_frame = DEFAULT_AVG;
+  this->predictions = (float**)calloc(this->demo_frame,sizeof(float*));
+  this->demo_names = names;
+  this->demo_alphabet = alphabet;
+  this->demo_thresh = DEFAULT_THRESH;
+  this->demo_hier = DEFAULT_HIER;
+  this->demo_index = CAMERA_INDEX;
+  this->demo_done = 0;
+  this->demo_classes = classes;
+  std::cout << "load network (" << cfg_file.data() << ") (" << weight_file.data() << ")\n";
+  this->net = load_network(cfg_file.data(),weight_file.data(),0);
+  // load_net(cfg_file, weight_file);
+  set_batch_network(net,1);
+  this->buff_index = 0;
+  this->demo_index = 0;
+
+  auto l = this->net->layers[net->n-1];
+  this->demo_detections = l.n*l.w*l.h;
+  this->avg = (float *) calloc(l.outputs, sizeof(float));
+  for(int j = 0; j < demo_frame; ++j)
+          this->predictions[j] = (float *) calloc(l.outputs, sizeof(float));
+  this->boxes = (box *)calloc(l.w*l.h*l.n, sizeof(box));
+  this->boxes_result = (box *) calloc(l.w*l.h*l.n, sizeof(box));
+
+  this->probs = (float **)calloc(l.w*l.h*l.n, sizeof(float *));
+  this->probs_result = (float **) calloc(l.w*l.h*l.n, sizeof(float*));
+for(int j = 0; j < l.w*l.h*l.n; ++j)
+  {
+          this->probs[j] = (float *)calloc(l.classes+1, sizeof(float));
+          this->probs_result[j] = (float *)calloc(l.classes+1, sizeof(float));
+  }
+
+  demo_total = size_network(net);
+  this->avg = (float *) calloc(demo_total, sizeof(float));
+  this->predictions = (float**)calloc(demo_frame, sizeof(float*));
+  for (int i = 0; i < demo_frame; ++i){
+  predictions[i] = (float*)calloc(demo_total, sizeof(float));
     }
 }
 
